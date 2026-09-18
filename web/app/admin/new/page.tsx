@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { buildTree, guessFieldSafe, randomSalt } from "./wizard-lib";
+import { DeployButton } from "./deploy-button";
 import { parseWorkbook, type ParseResult } from "@/lib/spreadsheet";
 import { storage, type Census, type ElectionDraft } from "@/lib/storage";
 import { FACTORY_ADDRESS } from "@/lib/contracts";
@@ -326,13 +327,23 @@ export default function NewElection() {
             <button onClick={downloadCensusDraft} disabled={!rollValid} className="btn-ghost !px-4 !py-2 text-sm disabled:opacity-40">
               Download census draft (JSON)
             </button>
-            <button
-              disabled={!factoryReady || !rollValid || !candidatesValid}
-              title={factoryReady ? "Deploy via ElectionFactory" : "Needs NEXT_PUBLIC_FACTORY_ADDRESS — set once the app-chain is live"}
-              className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40"
-            >
-              🚀 Deploy on-chain
-            </button>
+            {factoryReady && rollValid && candidatesValid ? (
+              <DeployButton
+                title={title}
+                description={description}
+                voters={result?.voters ?? []}
+                salt={salt}
+                candidates={activeCandidates}
+              />
+            ) : (
+              <button
+                disabled
+                title={factoryReady ? "Finish candidates + voter roll first" : "Needs NEXT_PUBLIC_FACTORY_ADDRESS — set once the app-chain is live"}
+                className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40"
+              >
+                🚀 Deploy on-chain
+              </button>
+            )}
           </div>
           {!factoryReady && (
             <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">

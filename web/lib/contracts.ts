@@ -1,5 +1,6 @@
 import { createConfig, http } from "wagmi";
-import { defineChain } from "viem";
+import { injected } from "wagmi/connectors";
+import { defineChain, parseAbi } from "viem";
 
 export const appchain = defineChain({
   id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260),
@@ -10,27 +11,33 @@ export const appchain = defineChain({
 
 export const wagmiConfig = createConfig({
   chains: [appchain],
+  connectors: [injected()],
   transports: { [appchain.id]: http() },
 });
 
 export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 export const EXPLORER_URL = process.env.NEXT_PUBLIC_EXPLORER_URL ?? "http://127.0.0.1:4000";
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260);
 
-export const ELECTION_ABI = [
+export const ZERO_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+
+export const ELECTION_ABI = parseAbi([
   "function addCandidate(string name, string tagline, string imageUrl)",
+  "function updateCensus(bytes32 newRoot, string newURI)",
   "function startElection()",
   "function endElection()",
   "function castVote(uint256 candidateId, bytes32 leaf, bytes32[] proof)",
   "function getCandidates() view returns (tuple(string name,string tagline,string imageUrl,uint256 voteCount,bool active)[])",
-  "function getStats() view returns (uint8,uint256,uint256,uint256,uint256)",
+  "function getStats() view returns (uint8 state, uint256 totalVotes, uint256 candidateCount, uint256 startedAt, uint256 endedAt)",
   "function merkleRoot() view returns (bytes32)",
   "function censusURI() view returns (string)",
-  "function hasVoted(bytes32) view returns (bool)",
+  "function hasVoted(bytes32 leaf) view returns (bool)",
   "event VoteCast(bytes32 indexed leaf, uint256 indexed candidateId, uint256 timestamp)",
-] as const;
+]);
 
-export const FACTORY_ABI = [
-  "function createElection(string title,string description,bytes32 merkleRoot,string censusURI) returns (address)",
-  "function getElectionsByOwner(address) view returns (address[])",
+export const FACTORY_ABI = parseAbi([
+  "function createElection(string title, string description, bytes32 merkleRoot, string censusURI) returns (address election)",
+  "function getElectionsByOwner(address owner) view returns (address[] elections)",
+  "function electionCount() view returns (uint256)",
   "event ElectionCreated(address indexed election, address indexed owner, string title)",
-] as const;
+]);

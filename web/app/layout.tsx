@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
   title: "BlockVote — Zero-Gas College Voting",
@@ -29,8 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen font-sans antialiased">
-        <Navbar />
-        {children}
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
         <footer className="mx-auto max-w-6xl px-6 py-10 text-center text-xs text-gray-500">
           Votes on-chain · eligibility via Merkle root · identities off-chain · college app-chain (gasPrice 0)
         </footer>
