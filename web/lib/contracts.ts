@@ -1,6 +1,4 @@
-import { createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
-import { defineChain, parseAbi } from "viem";
+import { createPublicClient, defineChain, http, parseAbi } from "viem";
 
 export const appchain = defineChain({
   id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260),
@@ -9,15 +7,14 @@ export const appchain = defineChain({
   rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545"] } },
 });
 
-export const wagmiConfig = createConfig({
-  chains: [appchain],
-  connectors: [injected()],
-  transports: { [appchain.id]: http() },
-});
+export function getPublicClient() {
+  return createPublicClient({ chain: appchain, transport: http() });
+}
 
 export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 export const EXPLORER_URL = process.env.NEXT_PUBLIC_EXPLORER_URL ?? "http://127.0.0.1:4000";
 export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260);
+export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545";
 
 export const ZERO_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 

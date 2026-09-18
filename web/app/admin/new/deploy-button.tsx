@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useConnect, usePublicClient, useWriteContract } from "wagmi";
-import { decodeEventLog } from "viem";
+import { createWalletClient, custom, decodeEventLog, type EIP1193Provider } from "viem";
 import { buildTree } from "@/lib/census";
 import {
+  appchain,
   CHAIN_ID,
   ELECTION_ABI,
   FACTORY_ABI,
   FACTORY_ADDRESS,
+  getPublicClient,
   ZERO_ROOT,
 } from "@/lib/contracts";
 import { storage, type Census, type VoterRecord } from "@/lib/storage";
@@ -21,12 +22,17 @@ interface CandidateInput {
 
 type Phase =
   | "idle"
-  | "connecting"
   | "creating"
   | "binding-census"
   | "adding-candidates"
   | "done"
   | "error";
+
+function getEthereum(): EIP1193Provider | null {
+  if (typeof window === "undefined") return null;
+  const eth = (window as unknown as { ethereum?: EIP1193Provider }).ethereum;
+  return eth ?? null;
+}
 
 export function DeployButton({
   title,
@@ -41,48 +47,43 @@ export function DeployButton({
   salt: `0x${string}`;
   candidates: CandidateInput[];
 }) {
-  const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending: connecting } = useConnect();
-  const { writeContractAsync } = useWriteContract();
-  const publicClient = usePublicClient();
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const [election, setElection] = useState<`0x${string}` | null>(null);
+  const [account, setAccount] = useState<`0x${string}` | null>(null);
 
   const ready = voters.length > 0 && candidates.length >= 2 && title.trim().length >= 4;
 
   async function run() {
-    if (!ready) return;
-    if (!isConnected || !address) {
-      setPhase("connecting");
-      const injected = connectors[0];
-      if (!injected) {
-        setPhase("error");
-        setMessage("No wallet found — install MetaMask and point it at the app-chain RPC.");
-        return;
-      }
-      connect({ connector: injected });
-      return;
-    }
-    if (chainId !== CHAIN_ID) {
+    if (!ready || phase === "creating" || phase === "binding-census" || phase === "adding-candidates") return;
+    const ethereum = getEthereum();
+    if (!ethereum) {
       setPhase("error");
-      setMessage(`Wrong network in wallet (got ${chainId}, need ${CHAIN_ID}). Switch networks and retry.`);
-      return;
-    }
-    if (!publicClient) {
-      setPhase("error");
-      setMessage("No RPC connection — check NEXT_PUBLIC_RPC_URL.");
+      setMessage("No wallet found — install MetaMask and point it at the app-chain RPC.");
       return;
     }
     try {
+      const publicClient = getPublicClient();
+      const walletClient = createWalletClient({ chain: appchain, transport: custom(ethereum) });
+
+      // 0. Connect + network check.
+      const [addr] = await walletClient.requestAddresses();
+      if (!addr) throw new Error("Wallet connection rejected.");
+      setAccount(addr);
+      const walletChainId = await walletClient.getChainId();
+      if (walletChainId !== CHAIN_ID) {
+        throw new Error(`Wrong network in wallet (got ${walletChainId}, need ${CHAIN_ID}). Switch networks and retry.`);
+      }
+
       // 1. Clone via factory with a placeholder root (real address unknown until mined).
       setPhase("creating");
       setMessage("Creating election clone… confirm in wallet.");
-      const createHash = await writeContractAsync({
+      const createHash = await walletClient.writeContract({
         address: FACTORY_ADDRESS,
         abi: FACTORY_ABI,
         functionName: "createElection",
         args: [title, description, ZERO_ROOT, "pending"],
+        account: addr,
       });
       const createRc = await publicClient.waitForTransactionReceipt({ hash: createHash });
       let electionAddr: `0x${string}` | null = null;
@@ -108,11 +109,12 @@ export function DeployButton({
       setMessage("Binding voter census to the deployed election… confirm in wallet.");
       const tree = buildTree(voters, salt, electionAddr, CHAIN_ID);
       const censusURI = `/census/${electionAddr}.json`;
-      const censusHash = await writeContractAsync({
+      const censusHash = await walletClient.writeContract({
         address: electionAddr,
         abi: ELECTION_ABI,
         functionName: "updateCensus",
         args: [tree.root as `0x${string}`, censusURI],
+        account: addr,
       });
       await publicClient.waitForTransactionReceipt({ hash: censusHash });
 
@@ -120,11 +122,12 @@ export function DeployButton({
       setPhase("adding-candidates");
       for (const [i, c] of candidates.entries()) {
         setMessage(`Adding candidate ${i + 1} of ${candidates.length}… confirm in wallet.`);
-        const h = await writeContractAsync({
+        const h = await walletClient.writeContract({
           address: electionAddr,
           abi: ELECTION_ABI,
           functionName: "addCandidate",
           args: [c.name, c.tagline, c.imageUrl],
+          account: addr,
         });
         await publicClient.waitForTransactionReceipt({ hash: h });
       }
@@ -171,20 +174,15 @@ export function DeployButton({
     );
   }
 
+  const busy = phase === "creating" || phase === "binding-census" || phase === "adding-candidates";
+
   return (
     <div>
-      <button onClick={() => void run()} disabled={!ready || phase !== "idle" && phase !== "error" && phase !== "connecting"} className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40">
-        {phase === "idle" || phase === "error" ? "🚀 Deploy on-chain" : `⏳ ${message || "Working…"}`}
+      <button onClick={() => void run()} disabled={!ready || busy} className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40">
+        {busy ? `⏳ ${message || "Working…"}` : account ? "🚀 Deploy on-chain" : "🔌 Connect wallet & deploy"}
       </button>
-      {!isConnected && (phase === "idle" || phase === "connecting") && (
-        <p className="mt-1 text-xs text-gray-500">
-          {connecting || phase === "connecting" ? "Confirm connection in your wallet…" : "First click connects your admin wallet, second click deploys."}
-        </p>
-      )}
       {phase === "error" && <p className="mt-2 text-xs text-red-300">{message}</p>}
-      {(phase === "creating" || phase === "binding-census" || phase === "adding-candidates") && (
-        <p className="mt-2 text-xs text-indigo-300">{message}</p>
-      )}
+      {busy && <p className="mt-2 text-xs text-indigo-300">{message}</p>}
     </div>
   );
 }
