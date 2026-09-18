@@ -1,0 +1,25 @@
+# secrets — NEVER commit
+.env
+*.key
+*.pem
+
+# deps
+node_modules/
+web/node_modules/
+web/.next/
+web/out/
+
+# hardhat
+cache/
+artifacts/
+typechain-types/
+coverage/
+coverage.json
+
+# census drafts (large, generated)
+web/public/census/*.json
+!web/public/census/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

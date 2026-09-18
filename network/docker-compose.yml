@@ -1,0 +1,24 @@
+# Zero-gas college app-chain: Geth Clique PoA, gasPrice 0
+# Bring-up: docker compose -f network/docker-compose.yml up -d
+# RPC: http://127.0.0.1:8545  chainId 20260  gasPrice 0
+# Explorer (Blockscout): http://127.0.0.1:4000
+services:
+  geth-validator-1:
+    image: ethereum/client-go:v1.13.14
+    command: >
+      --datadir /data
+      --networkid 20260
+      --http --http.addr 0.0.0.0 --http.port 8545 --http.api eth,net,web3,txpool,clique
+      --http.corsdomain "*"
+      --ws --ws.addr 0.0.0.0 --ws.port 8546 --ws.api eth,net,web3,txpool
+      --mine --miner.etherbase 0x0000000000000000000000000000000000000000
+      --unlock 0x0000000000000000000000000000000000000000 --password /data/password.txt --allow-insecure-unlock
+      --syncmode full --gcmode archive
+      --gasprice 0 --miner.gasprice 0 --miner.gaslimit 30000000
+    volumes:
+      - ./node1:/data
+      - ./genesis.json:/genesis.json:ro
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+      - "30303:30303"
