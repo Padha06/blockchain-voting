@@ -36,11 +36,15 @@ export function guessField(header: string): string {
 /** Parse .xlsx/.xls/.csv in-browser. mapping: columnIndex -> voter field. */
 export function parseWorkbook(buf: ArrayBuffer, mapping?: Record<number, string>): ParseResult {
   const wb = XLSX.read(buf, { type: "array" });
-  const ws = wb.Sheets[wb.SheetNames[0]];
+  const firstSheet = wb.SheetNames[0];
+  if (!firstSheet) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
+  const ws = wb.Sheets[firstSheet];
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
   if (rows.length === 0) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
 
-  const header = (rows[0] as unknown[]).map((h) => String(h));
+  const firstRow = rows[0];
+  if (!firstRow) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
+  const header = firstRow.map((h) => String(h));
   const map: Record<number, string> =
     mapping ?? Object.fromEntries(header.map((h, i) => [i, guessField(h)]));
   const hasHeader = Object.values(map).some((f) => f !== "ignore");
