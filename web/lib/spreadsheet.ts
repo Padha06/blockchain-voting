@@ -39,6 +39,7 @@ export function parseWorkbook(buf: ArrayBuffer, mapping?: Record<number, string>
   const firstSheet = wb.SheetNames[0];
   if (!firstSheet) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
   const ws = wb.Sheets[firstSheet];
+  if (!ws) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
   const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
   if (rows.length === 0) return { voters: [], issues: [], valid: 0, errors: 0, warnings: 0 };
 
