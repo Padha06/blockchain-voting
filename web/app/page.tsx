@@ -29,6 +29,9 @@ export default function Home() {
           <a href="/admin/new" className="btn-primary">Create an election</a>
           <a href="/verify" className="btn-ghost">Verify a receipt</a>
         </div>
+        <p className="mt-4 text-sm text-gray-400">
+          New here? <a href="/guide" className="font-semibold text-indigo-300 hover:text-indigo-200">Take the 5-minute guided demo →</a>
+        </p>
         <div className="mx-auto mt-10 grid max-w-3xl grid-cols-3 gap-3">
           {[
             ["4–5k", "voters per election"],

@@ -30,6 +30,22 @@ export default function ChainSettings() {
     }).catch(() => undefined);
   }, []);
 
+  async function autofillLocal() {
+    setStatus(null);
+    setBusy(true);
+    try {
+      const id = await probeRpc("http://127.0.0.1:8545");
+      setRpcUrl("http://127.0.0.1:8545");
+      setChainId(String(id));
+      setExplorer("http://127.0.0.1:8545");
+      setStatus({ kind: "info", text: `Demo chain found (chain ${id}). Paste the factory address, then Test connection & save.` });
+    } catch (e) {
+      setStatus({ kind: "err", text: e instanceof Error ? `No demo chain on this laptop: ${e.message}` : "No demo chain found." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function testAndSave() {
     setStatus(null);
     setBusy(true);
@@ -117,7 +133,10 @@ export default function ChainSettings() {
           </p>
         )}
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button onClick={() => void autofillLocal()} disabled={busy} className="btn-ghost !px-4 !py-2 text-sm disabled:opacity-40">
+            🖥️ Autofill from this laptop
+          </button>
           <button onClick={() => void testAndSave()} disabled={busy} className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40">
             {busy ? "Testing RPC…" : "Test connection & save"}
           </button>

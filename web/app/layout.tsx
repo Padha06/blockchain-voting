@@ -17,6 +17,7 @@ function Navbar() {
         </span>
       </a>
       <nav className="flex items-center gap-1">
+        <a className="nav-link" href="/guide">Guide</a>
         <a className="nav-link" href="/admin">Admin</a>
         <a className="nav-link" href="/verify">Verify</a>
         <a className="btn-primary ml-2 !px-4 !py-2 text-sm" href="/admin/new">New election</a>
