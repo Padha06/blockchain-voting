@@ -64,25 +64,28 @@ export default function NewElection() {
 
   const [chainId, setChainId] = useState(() => envChainConfig().chainId);
   const [factoryReady, setFactoryReady] = useState(() => isFactorySet(envChainConfig()));
+  const [cfgNote, setCfgNote] = useState("build defaults");
 
   // Runtime chain config (Admin → Settings override, else build env).
   // Reloads on step change AND when the tab regains focus, so saving settings
   // in another tab unlocks Deploy without a page refresh.
+  function reloadChainConfig() {
+    loadChainConfig().then((c) => {
+      setChainId(c.chainId);
+      setFactoryReady(isFactorySet(c));
+      setCfgNote(
+        c.fromEnv
+          ? "build defaults (no saved settings in THIS browser)"
+          : `saved settings · factory ${c.factoryAddress.slice(0, 10)}…`
+      );
+    }).catch(() => undefined);
+  }
+
   useEffect(() => {
-    let alive = true;
-    const reload = () => {
-      loadChainConfig().then((c) => {
-        if (!alive) return;
-        setChainId(c.chainId);
-        setFactoryReady(isFactorySet(c));
-      }).catch(() => undefined);
-    };
-    reload();
-    window.addEventListener("focus", reload);
-    return () => {
-      alive = false;
-      window.removeEventListener("focus", reload);
-    };
+    reloadChainConfig();
+    window.addEventListener("focus", reloadChainConfig);
+    return () => window.removeEventListener("focus", reloadChainConfig);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const previewRoot = useMemo(() => {
@@ -367,11 +370,17 @@ export default function NewElection() {
             )}
           </div>
           {!factoryReady && (
-            <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-              On-chain deploy unlocks in <a href="/admin/settings" className="underline">Admin → Chain settings</a>:
-              paste the RPC URL + factory address (one minute, no redeploy).
-              Until then your draft autosaves locally and the census downloads as a file.
-            </p>
+            <div className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+              <p>
+                On-chain deploy unlocks in <a href="/admin/settings" className="underline">Admin → Chain settings</a>:
+                paste the RPC URL + factory address (one minute, no redeploy).
+                Until then your draft autosaves locally and the census downloads as a file.
+              </p>
+              <p className="mt-1 text-amber-200/70">This tab currently sees: {cfgNote}.</p>
+              <button onClick={reloadChainConfig} className="mt-2 rounded-lg border border-amber-300/40 px-3 py-1 font-semibold text-amber-100 hover:bg-amber-300/10">
+                ↻ Recheck — I already saved settings
+              </button>
+            </div>
           )}
         </div>
       )}
