@@ -59,6 +59,11 @@ export default function ChainSettings() {
       if (!/^0x[0-9a-fA-F]{40}$/.test(factory.trim())) {
         throw new Error("Factory address must be a 0x address (40 hex chars).");
       }
+      if (/^0x0{40}$/i.test(factory.trim())) {
+        throw new Error(
+          "Factory address is still 0x000…000 — paste the real ElectionFactory address from deployment.json (run npx hardhat run scripts/deploy.ts --network localhost on the chain laptop first)."
+        );
+      }
       await saveChainOverride({
         rpcUrl: rpcUrl.trim().replace(/\/$/, ""),
         chainId: id,
@@ -67,7 +72,12 @@ export default function ChainSettings() {
       });
       const next = await loadChainConfig();
       setCfg(next);
-      setStatus({ kind: "ok", text: `Saved — chain ${liveChainId} reachable, deploy unlocked. No redeploy needed.` });
+      setStatus({
+        kind: "ok",
+        text: isFactorySet(next)
+          ? `Saved — chain ${liveChainId} reachable, deploy unlocked. No redeploy needed.`
+          : `Saved — chain ${liveChainId} reachable, but factory is still empty: paste the real factory address and save again to unlock deploy.`,
+      });
     } catch (e) {
       setStatus({ kind: "err", text: e instanceof Error ? e.message : "Save failed." });
     } finally {
