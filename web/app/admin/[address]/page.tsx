@@ -7,6 +7,7 @@ import {
   ELECTION_ABI,
   getPublicClient,
 } from "@/lib/contracts";
+import { storage } from "@/lib/storage";
 import { envChainConfig, loadChainConfig, type ChainConfig } from "@/lib/chain-config";
 
 const STATES = ["Created", "Active", "Ended", "Cancelled"];
@@ -125,6 +126,27 @@ export default function Manage({ params }: { params: { address: string } }) {
           className="btn-ghost !px-4 !py-2 text-sm"
         >
           🔗 Copy vote link
+        </button>
+        <button
+          onClick={() => {
+            void storage.getCensus(addr).then((c) => {
+              if (!c) {
+                setTxMsg("No census copy in this browser — use the .json file downloaded at deploy time.");
+                return;
+              }
+              const blob = new Blob([JSON.stringify(c, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${addr}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setTxMsg("Census downloaded — send its contents here to publish it for voters.");
+            });
+          }}
+          className="btn-ghost !px-4 !py-2 text-sm"
+        >
+          📥 Census file
         </button>
       </div>
 
