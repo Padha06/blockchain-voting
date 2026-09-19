@@ -1,3 +1,5 @@
+import { LiveElections } from "@/components/live-elections";
+
 const FEATURES = [
   { icon: "🔒", title: "Tamper-evident votes", text: "Every vote is an on-chain transaction with a hash you can verify on the explorer." },
   { icon: "📋", title: "Excel voter roll", text: "Upload the class spreadsheet, preview errors, publish one Merkle root." },
@@ -45,6 +47,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <LiveElections />
 
       <section className="grid gap-4 pb-16 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((f) => (
