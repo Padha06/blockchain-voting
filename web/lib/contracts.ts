@@ -8,15 +8,18 @@ export const appchain = defineChain({
   rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545"] } },
 });
 
-export function getPublicClient(rpcUrl?: string) {
-  if (!rpcUrl) return createPublicClient({ chain: appchain, transport: http() });
+export function getPublicClient(rpcUrl?: string, chainId?: number) {
+  const id = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260);
+  if (!rpcUrl && id === Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260)) {
+    return createPublicClient({ chain: appchain, transport: http() });
+  }
   const chain = defineChain({
-    id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260),
+    id,
     name: "College AppChain",
     nativeCurrency: { name: "Gas", symbol: "GAS", decimals: 18 },
-    rpcUrls: { default: { http: [rpcUrl] } },
+    rpcUrls: { default: { http: [rpcUrl ?? process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545"] } },
   });
-  return createPublicClient({ chain, transport: http(rpcUrl) });
+  return createPublicClient({ chain, transport: http(chain.rpcUrls.default.http[0]) });
 }
 
 /** viem Chain matching a runtime ChainConfig (for wallet clients). */
@@ -37,6 +40,8 @@ export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545
 export const ZERO_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
 export const ELECTION_ABI = parseAbi([
+  "function owner() view returns (address)",
+  "function title() view returns (string)",
   "function addCandidate(string name, string tagline, string imageUrl)",
   "function updateCensus(bytes32 newRoot, string newURI)",
   "function startElection()",
@@ -52,6 +57,7 @@ export const ELECTION_ABI = parseAbi([
 
 export const FACTORY_ABI = parseAbi([
   "function createElection(string title, string description, bytes32 merkleRoot, string censusURI) returns (address election)",
+  "function getElections() view returns (address[] elections)",
   "function getElectionsByOwner(address owner) view returns (address[] elections)",
   "function electionCount() view returns (uint256)",
   "event ElectionCreated(address indexed election, address indexed owner, string title)",
