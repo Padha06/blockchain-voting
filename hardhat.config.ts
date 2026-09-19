@@ -14,7 +14,9 @@ const config: HardhatUserConfig = {
     settings: { optimizer: { enabled: true, runs: 200 } },
   },
   networks: {
-    hardhat: { chainId: 31337 },
+    // Zero-gas chain: base fee starts at 0 and automine keeps empty blocks at 0,
+    // so voters with unfunded burner wallets can still transact (gasPrice 0).
+    hardhat: { chainId: 31337, gasPrice: 0, initialBaseFeePerGas: 0 },
     localhost: { url: "http://127.0.0.1:8545", chainId: 31337 },
     // Zero-gas college app-chain (Geth Clique, gasPrice 0). Same key format.
     appchain: {

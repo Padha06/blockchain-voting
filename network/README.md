@@ -38,17 +38,40 @@ Environment Variables set:
 
 Redeploy. The wizard's **Deploy on-chain** button activates automatically.
 
-## Option B — classroom demo, no server (temporary)
+## Option B — classroom demo, no server (temporary, PROVEN recipe)
 
-Run a Hardhat node on the presenting laptop and expose it:
+Run the zero-gas chain on the presenting laptop and expose it. Proven end-to-end:
+200 voters + 140 `gasPrice: 0` votes mine cleanly on this setup.
 
-```bash
-npx hardhat node                                        # localhost:8545
+```bat
+:: terminal 1 — start chain (repo root)
+start-chain.bat
+:: terminal 2 — deploy factory + seed demo data
 npx hardhat run scripts/deploy.ts --network localhost
-cloudflared tunnel --url http://127.0.0.1:8545         # public https URL
+npx hardhat run scripts/seed-demo.ts --network localhost
 ```
 
-Point the Vercel env vars at the tunnel URL. Works for the demo; tear down after.
+Install cloudflared, then expose the RPC (free quick tunnel):
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8545
+```
+
+Copy the `https://…trycloudflare.com` URL. In Vercel → project →
+Environment Variables (visibility: plain/config, NOT secret — `NEXT_PUBLIC_`
+values ship in the browser bundle), set:
+
+- `NEXT_PUBLIC_RPC_URL` = your tunnel URL
+- `NEXT_PUBLIC_CHAIN_ID` = 31337
+- `NEXT_PUBLIC_FACTORY_ADDRESS` = factory address from `deployment.json`
+- `NEXT_PUBLIC_EXPLORER_URL` = your tunnel URL (receipts link here until a real
+  explorer exists; tx lookup via RPC works)
+
+Redeploy. The wizard's **Deploy on-chain** button activates. Admin connects
+MetaMask (import hardhat account #0, add custom network: tunnel URL, chainId
+31337) and deploys — voters use free in-browser burner wallets.
+
+Keep the laptop + tunnel online for the whole demo. Tear down after.
 
 ## Explorer (receipt links)
 

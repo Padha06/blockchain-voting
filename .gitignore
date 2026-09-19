@@ -20,6 +20,11 @@ coverage.json
 web/public/census/*.json
 !web/public/census/.gitkeep
 
+# generated run artifacts (local-only addresses/receipts)
+deployment.json
+web/.env.local.appchain
+web/demo-receipts.json
+
 # OS
 .DS_Store
 Thumbs.db

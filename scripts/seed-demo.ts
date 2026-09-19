@@ -32,7 +32,9 @@ async function main() {
     "pending"
   );
   const rc = await tx.wait();
-  const electionAddr: string = await factory.electionCount().then(async (n) => (await factory.getElections())[Number(n) - 1n]);
+  const count: bigint = await factory.electionCount();
+  const all: string[] = await factory.getElections();
+  const electionAddr: string = all[Number(count - 1n)] as string;
   console.log("Election:", electionAddr);
 
   // Rebuild tree bound to the real election address + chain, then update census.
