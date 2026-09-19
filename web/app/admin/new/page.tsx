@@ -65,12 +65,24 @@ export default function NewElection() {
   const [chainId, setChainId] = useState(() => envChainConfig().chainId);
   const [factoryReady, setFactoryReady] = useState(() => isFactorySet(envChainConfig()));
 
-  // Runtime chain config (Admin → Settings override, else build env)
+  // Runtime chain config (Admin → Settings override, else build env).
+  // Reloads on step change AND when the tab regains focus, so saving settings
+  // in another tab unlocks Deploy without a page refresh.
   useEffect(() => {
-    loadChainConfig().then((c) => {
-      setChainId(c.chainId);
-      setFactoryReady(isFactorySet(c));
-    }).catch(() => undefined);
+    let alive = true;
+    const reload = () => {
+      loadChainConfig().then((c) => {
+        if (!alive) return;
+        setChainId(c.chainId);
+        setFactoryReady(isFactorySet(c));
+      }).catch(() => undefined);
+    };
+    reload();
+    window.addEventListener("focus", reload);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", reload);
+    };
   }, [step]);
 
   const previewRoot = useMemo(() => {
