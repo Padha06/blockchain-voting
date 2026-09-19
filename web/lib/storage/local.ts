@@ -7,6 +7,7 @@ const K = {
   census: (a: string) => `bv.census.${a.toLowerCase()}`,
   events: (a: string) => `bv.events.${a.toLowerCase()}`,
   block: (a: string) => `bv.block.${a.toLowerCase()}`,
+  setting: (k: string) => `bv.setting.${k}`,
 };
 
 function read<T>(key: string, fallback: T): T {
@@ -59,5 +60,15 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
   async setLastIndexedBlock(electionAddress: string, block: bigint): Promise<void> {
     write(K.block(electionAddress), block.toString());
+  }
+  async getSetting(key: string): Promise<string | null> {
+    return read<string | null>(K.setting(key), null);
+  }
+  async setSetting(key: string, value: string): Promise<void> {
+    write(K.setting(key), value);
+  }
+  async deleteSetting(key: string): Promise<void> {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(K.setting(key));
   }
 }

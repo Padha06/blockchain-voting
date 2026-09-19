@@ -6,10 +6,9 @@ import { buildTree, guessFieldSafe, randomSalt } from "./wizard-lib";
 import { DeployButton } from "./deploy-button";
 import { parseWorkbook, type ParseResult } from "@/lib/spreadsheet";
 import { storage, type Census, type ElectionDraft } from "@/lib/storage";
-import { FACTORY_ADDRESS } from "@/lib/contracts";
+import { envChainConfig, isFactorySet, loadChainConfig } from "@/lib/chain-config";
 
 const STEPS = ["Details", "Candidates", "Upload roll", "Preview", "Review & deploy"];
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260);
 const FIELDS = ["rollNo", "name", "department", "year", "section", "ignore"] as const;
 
 interface CandidateDraft {
@@ -63,22 +62,32 @@ export default function NewElection() {
     storage.saveDraft("wizard-current", draft).catch(() => undefined);
   }, [draftId, title, description, candidates, result]);
 
+  const [chainId, setChainId] = useState(() => envChainConfig().chainId);
+  const [factoryReady, setFactoryReady] = useState(() => isFactorySet(envChainConfig()));
+
+  // Runtime chain config (Admin → Settings override, else build env)
+  useEffect(() => {
+    loadChainConfig().then((c) => {
+      setChainId(c.chainId);
+      setFactoryReady(isFactorySet(c));
+    }).catch(() => undefined);
+  }, [step]);
+
   const previewRoot = useMemo(() => {
     const voters = result?.voters ?? [];
     if (voters.length === 0) return null;
     try {
-      const tree = buildTree(voters, salt, "0x0000000000000000000000000000000000000000", CHAIN_ID);
+      const tree = buildTree(voters, salt, "0x0000000000000000000000000000000000000000", chainId);
       return tree.root as string;
     } catch {
       return null;
     }
-  }, [result, salt]);
+  }, [result, salt, chainId]);
 
   const detailsValid = title.trim().length >= 4;
   const activeCandidates = candidates.filter((c) => c.name.trim().length > 0);
   const candidatesValid = activeCandidates.length >= 2;
   const rollValid = result !== null && result.errors === 0 && result.valid > 0;
-  const factoryReady = FACTORY_ADDRESS !== "0x0000000000000000000000000000000000000000";
 
   async function onFile(file: File) {
     setFileName(file.name);
@@ -122,7 +131,7 @@ export default function NewElection() {
       electionAddress: "PENDING_DEPLOY",
       merkleRoot: (previewRoot ?? "0x") as `0x${string}`,
       salt,
-      chainId: CHAIN_ID,
+      chainId,
       voters: result?.voters ?? [],
       createdAt: Date.now(),
     };
@@ -313,7 +322,7 @@ export default function NewElection() {
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
             <div className="kpi"><div className="text-xs uppercase tracking-wider text-gray-400">Candidates</div><div className="text-xl font-bold text-white">{activeCandidates.length}</div></div>
             <div className="kpi"><div className="text-xs uppercase tracking-wider text-gray-400">Voters</div><div className="text-xl font-bold text-white">{result?.valid ?? 0}</div></div>
-            <div className="kpi"><div className="text-xs uppercase tracking-wider text-gray-400">Chain</div><div className="text-xl font-bold text-white">{CHAIN_ID}</div></div>
+            <div className="kpi"><div className="text-xs uppercase tracking-wider text-gray-400">Chain</div><div className="text-xl font-bold text-white">{chainId}</div></div>
           </div>
           <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -338,7 +347,7 @@ export default function NewElection() {
             ) : (
               <button
                 disabled
-                title={factoryReady ? "Finish candidates + voter roll first" : "Needs NEXT_PUBLIC_FACTORY_ADDRESS — set once the app-chain is live"}
+                title={factoryReady ? "Finish candidates + voter roll first" : "Locked — set RPC + factory in Admin → Chain settings"}
                 className="btn-primary !px-4 !py-2 text-sm disabled:opacity-40"
               >
                 🚀 Deploy on-chain
@@ -347,7 +356,8 @@ export default function NewElection() {
           </div>
           {!factoryReady && (
             <p className="mt-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
-              On-chain deploy unlocks once the app-chain is live and <code>NEXT_PUBLIC_FACTORY_ADDRESS</code> is set.
+              On-chain deploy unlocks in <a href="/admin/settings" className="underline">Admin → Chain settings</a>:
+              paste the RPC URL + factory address (one minute, no redeploy).
               Until then your draft autosaves locally and the census downloads as a file.
             </p>
           )}

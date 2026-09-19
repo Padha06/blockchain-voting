@@ -8,7 +8,10 @@ export default function AdminList() {
           <h1 className="text-3xl font-extrabold tracking-tight text-white">Elections</h1>
           <p className="mt-1 text-sm text-gray-400">Create, start, stop and audit every vote — all from here.</p>
         </div>
-        <a href="/admin/new" className="btn-primary">+ New election</a>
+        <div className="flex gap-2">
+          <a href="/admin/settings" className="btn-ghost">⚙️ Chain settings</a>
+          <a href="/admin/new" className="btn-primary">+ New election</a>
+        </div>
       </div>
       <div className="card mt-8 text-center">
         <div className="text-4xl">🗳️</div>

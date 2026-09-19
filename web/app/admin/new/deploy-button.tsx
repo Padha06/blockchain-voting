@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createWalletClient, custom, decodeEventLog, type EIP1193Provider } from "viem";
 import { buildTree } from "@/lib/census";
 import {
-  appchain,
-  CHAIN_ID,
+  chainForConfig,
   ELECTION_ABI,
   FACTORY_ABI,
-  FACTORY_ADDRESS,
   getPublicClient,
   ZERO_ROOT,
 } from "@/lib/contracts";
+import { envChainConfig, loadChainConfig, type ChainConfig } from "@/lib/chain-config";
 import { storage, type Census, type VoterRecord } from "@/lib/storage";
 
 interface CandidateInput {
@@ -47,10 +46,15 @@ export function DeployButton({
   salt: `0x${string}`;
   candidates: CandidateInput[];
 }) {
+  const [cfg, setCfg] = useState<ChainConfig>(() => envChainConfig());
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState("");
   const [election, setElection] = useState<`0x${string}` | null>(null);
   const [account, setAccount] = useState<`0x${string}` | null>(null);
+
+  useEffect(() => {
+    loadChainConfig().then(setCfg).catch(() => undefined);
+  }, []);
 
   const ready = voters.length > 0 && candidates.length >= 2 && title.trim().length >= 4;
 
@@ -59,27 +63,27 @@ export function DeployButton({
     const ethereum = getEthereum();
     if (!ethereum) {
       setPhase("error");
-      setMessage("No wallet found — install MetaMask and point it at the app-chain RPC.");
+      setMessage("No wallet found — install MetaMask and point it at the chain RPC.");
       return;
     }
     try {
-      const publicClient = getPublicClient();
-      const walletClient = createWalletClient({ chain: appchain, transport: custom(ethereum) });
+      const publicClient = getPublicClient(cfg.rpcUrl);
+      const walletClient = createWalletClient({ chain: chainForConfig(cfg), transport: custom(ethereum) });
 
       // 0. Connect + network check.
       const [addr] = await walletClient.requestAddresses();
       if (!addr) throw new Error("Wallet connection rejected.");
       setAccount(addr);
       const walletChainId = await walletClient.getChainId();
-      if (walletChainId !== CHAIN_ID) {
-        throw new Error(`Wrong network in wallet (got ${walletChainId}, need ${CHAIN_ID}). Switch networks and retry.`);
+      if (walletChainId !== cfg.chainId) {
+        throw new Error(`Wrong network in wallet (got ${walletChainId}, need ${cfg.chainId}). Switch networks and retry.`);
       }
 
       // 1. Clone via factory with a placeholder root (real address unknown until mined).
       setPhase("creating");
       setMessage("Creating election clone… confirm in wallet.");
       const createHash = await walletClient.writeContract({
-        address: FACTORY_ADDRESS,
+        address: cfg.factoryAddress,
         abi: FACTORY_ABI,
         functionName: "createElection",
         args: [title, description, ZERO_ROOT, "pending"],
@@ -107,7 +111,7 @@ export function DeployButton({
       // 2. Build the real tree bound to the deployed address, then commit the root.
       setPhase("binding-census");
       setMessage("Binding voter census to the deployed election… confirm in wallet.");
-      const tree = buildTree(voters, salt, electionAddr, CHAIN_ID);
+      const tree = buildTree(voters, salt, electionAddr, cfg.chainId);
       const censusURI = `/census/${electionAddr}.json`;
       const censusHash = await walletClient.writeContract({
         address: electionAddr,
@@ -137,7 +141,7 @@ export function DeployButton({
         electionAddress: electionAddr,
         merkleRoot: tree.root as `0x${string}`,
         salt,
-        chainId: CHAIN_ID,
+        chainId: cfg.chainId,
         voters,
         createdAt: Date.now(),
       };

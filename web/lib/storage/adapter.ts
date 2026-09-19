@@ -48,4 +48,9 @@ export interface StorageAdapter {
   getEvents(electionAddress: string): Promise<VoteEvent[]>;
   getLastIndexedBlock(electionAddress: string): Promise<bigint | null>;
   setLastIndexedBlock(electionAddress: string, block: bigint): Promise<void>;
+
+  // UI settings (e.g. runtime chain overrides). Namespaced keys.
+  getSetting(key: string): Promise<string | null>;
+  setSetting(key: string, value: string): Promise<void>;
+  deleteSetting(key: string): Promise<void>;
 }

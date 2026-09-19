@@ -1,4 +1,5 @@
 import { createPublicClient, defineChain, http, parseAbi } from "viem";
+import type { ChainConfig } from "./chain-config";
 
 export const appchain = defineChain({
   id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260),
@@ -7,8 +8,25 @@ export const appchain = defineChain({
   rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8545"] } },
 });
 
-export function getPublicClient() {
-  return createPublicClient({ chain: appchain, transport: http() });
+export function getPublicClient(rpcUrl?: string) {
+  if (!rpcUrl) return createPublicClient({ chain: appchain, transport: http() });
+  const chain = defineChain({
+    id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 20260),
+    name: "College AppChain",
+    nativeCurrency: { name: "Gas", symbol: "GAS", decimals: 18 },
+    rpcUrls: { default: { http: [rpcUrl] } },
+  });
+  return createPublicClient({ chain, transport: http(rpcUrl) });
+}
+
+/** viem Chain matching a runtime ChainConfig (for wallet clients). */
+export function chainForConfig(cfg: ChainConfig) {
+  return defineChain({
+    id: cfg.chainId,
+    name: "College AppChain",
+    nativeCurrency: { name: "Gas", symbol: "GAS", decimals: 18 },
+    rpcUrls: { default: { http: [cfg.rpcUrl] } },
+  });
 }
 
 export const FACTORY_ADDRESS = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
