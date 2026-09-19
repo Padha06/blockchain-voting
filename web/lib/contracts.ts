@@ -24,7 +24,7 @@ export const ELECTION_ABI = parseAbi([
   "function startElection()",
   "function endElection()",
   "function castVote(uint256 candidateId, bytes32 leaf, bytes32[] proof)",
-  "function getCandidates() view returns (tuple(string name,string tagline,string imageUrl,uint256 voteCount,bool active)[])",
+  "function getCandidates() view returns ((string name, string tagline, string imageUrl, uint256 voteCount, bool active)[])",
   "function getStats() view returns (uint8 state, uint256 totalVotes, uint256 candidateCount, uint256 startedAt, uint256 endedAt)",
   "function merkleRoot() view returns (bytes32)",
   "function censusURI() view returns (string)",
